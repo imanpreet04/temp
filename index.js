@@ -29,7 +29,8 @@ app.get('/duplicate', (req, res) => {
   res.send('Second duplicate endpoint (this one always wins)');
 });
 
-const PORT = 3000;
+const PORT = 4000;
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:3000`);
+  console.log(`Server running at http://localhost:4000`);
+
 });
