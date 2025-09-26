@@ -10,7 +10,7 @@ app.get('/about ', (req, res) => {
   res.send('This is the about page');
 });
 
-app.get('/user\id', (req, res) => {
+app.get('/user/:id', (req, res) => {
   const userId = req.params.id;
   res.send(`User ID is: ${userid}`);
 });
