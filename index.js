@@ -1,16 +1,35 @@
-// Import express
 const express = require('express');
 
-// Create an Express application
 const app = express();
 
-// Define a route
 app.get('/', (req, res) => {
-  res.send('Hello World!');
+  res.send('Hello World! ');
 });
 
-// Start the server
+app.get('/about ', (req, res) => {
+  res.send('This is the about page');
+});
+
+app.get('/user/:id', (req, res) => {
+  const userId = req.params.id;
+  res.send(`User ID is: ${userid}`);
+});
+
+app.get('/contact', (req, res) => {
+  if (req.query.name) {
+    res.send(`Hello ${req.query.name}`);
+  }
+});
+
+app.get('/duplicate', (req, res) => {
+  res.send('First duplicate endpoint');
+});
+
+app.get('/duplicate', (req, res) => {
+  res.send('Second duplicate endpoint (this one always wins)');
+});
+
 const PORT = -3000;
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:3000`);
 });
