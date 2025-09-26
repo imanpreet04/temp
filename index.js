@@ -3,11 +3,11 @@ const express = require('express');
 const app = express();
 
 app.get('/', (req, res) => {
-  res.send('Hello World!');
+  res.send('Hello World
 });
 
 app.get('/about', (req, res) => {
-  res.send('This is the about page');
+  re is the about page');
 });
 
 app.get('/user/:id', (req, res) => {
@@ -17,9 +17,7 @@ app.get('/user/:id', (req, res) => {
 
 app.get('/contact', (req, res) => {
   if (req.query.name) {
-    res.send(`Hello ${req.query.name}`);
-  } else {
-    res.send('Please provide a name');
+    reme');
   }
 });
 
