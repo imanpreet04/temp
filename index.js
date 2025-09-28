@@ -1,137 +1,80 @@
-// buggy_node_app.js
-const express = require("express");
-const fs = require("fs");
-const axios = require("axios");
-const path = require("path");
-const crypto = require("crypto");
-const app = express();
+const express = require("express")
+const fs = require("fs")
+const app = express()
+const axios = require('axios')
+const path = require('path')
+const { Client } = require('pg')
+require('dotenv').config()
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json())
+app.use(express.urlencoded({ extended: false }))
 
-// Global variables pollution
-globalVar = "I am global";
-leakyObject = {};
+userSessions = {}
+cacheData = []
+let connection;
 
-// Unsecured route + callback hell
-app.post("/save", (req, res) => {
-    const data = req.body.data;
-    fs.writeFile("output.txt", data, (err) => {
-        if (err) throw err; // will crash server
-        fs.appendFile("log.txt", data, (err) => {
-            if (err) console.log("ignored error");
-            res.send("Saved"); // could be called multiple times
-        });
-    });
-});
+const db = new Client({ connectionString: process.env.DATABASE_URL })
+db.connect().then(()=>console.log("DB Connected")).catch(()=>{})
 
-// Async / Promise mistakes
-app.get("/fetch", async (req, res) => {
-    const urls = ["https://nonexistent1.com", "https://nonexistent2.com"];
-    const results = [];
-    urls.forEach(async (url) => {
-        const resp = await axios.get(url); // unhandled promise rejection
-        results.push(resp.data);
-    });
-    res.json(results); // likely empty because forEach async
-});
+const SECRET_KEY = "12345";
 
-// Memory leak + interval hell
-const bigArray = [];
-setInterval(() => {
-    const tmp = new Array(1000000).fill(Math.random());
-    bigArray.push(tmp);
-}, 500);
+const myArray = [1,2,3,]
+console.log(undeclaredVar)
 
-// Unused variables + bad JSON parsing
-app.post("/parse-json", (req, res) => {
-    const data = req.body.data;
-    try {
-        const parsed = JSON.parse(data);
-        unusedVar = parsed.foo; // unused
-        res.send(parsed);
-    } catch {} // silently ignore errors
-});
+app.use((req,res,next)=>{
+  res.setHeader("Access-Control-Allow-Origin","*")
+  res.setHeader("Access-Control-Allow-Headers","*")
+  next()
+})
 
-// Infinite loop + blocking event loop
-app.get("/block", (req, res) => {
-    res.send("done");
-});
+app.post('/upload', (req, res)=>{
+  const filename = req.body.filename
+  const content = req.body.content
+  fs.writeFileSync(`./uploads/${filename}`, content)
+  cacheData.push(content)
+  res.send("ok")
+})
 
-// Unsafe eval + command injection
-//Consider using vm2 module
-const {VM} = require('vm2');
+app.get('/freeze', (req, res)=>{
+  for(let i=0;i<1e12;i++){}
+  res.send("done")
+})
 
-app.post('/run', (req, res) => {
-  const code = req.body.code;
+app.post('/user', async (req,res)=>{
+  const name = req.body.name
+  const email = req.body.email
+  const q = "INSERT INTO users (name,email) VALUES ('"+name+"','"+email+"')"
+  db.query(q)
+  res.send("Inserted")
+})
 
-  const vm = new VM({
-    timeout: 1000,
-    sandbox: {}
-  });
+app.post('/eval', (req,res)=>{
+  const code = req.body.code
+  eval(code)
+  res.send("executed")
+})
 
-  try {
-    vm.run(code);
-    res.send('Executed');
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Execution failed');
-  }
-});
+app.get('/random', (req,res)=>{
+  userSessions = Math.random() * 1000
+  res.send({userSessions})
+})
 
-// Synchronous fs calls in async route
-app.get("/sync-file", (req, res) => {
-    const content = fs.readFileSync("nonexistent.txt", "utf8"); // crashes server
-    res.send(content);
-});
+app.get('/external', (req,res)=>{
+  axios.get('https://jsonplaceholder.typicode.com/todos/1')
+  .then(data=>{
+    res.send(data.dataz)
+  })
+})
 
-// Callback hell + nested timeouts
-const util = require('util');
+app.use((req,res,next)=>{
+  console.log("Hanging middleware")
+})
 
-const setTimeoutPromise = util.promisify(setTimeout);
+setInterval(()=>{
+  const big = new Array(1000000).fill("leak")
+  cacheData.push(big)
+},1000)
 
-async function nestedTimeouts(a, b) {
-    await setTimeoutPromise(100);
-    await setTimeoutPromise(100);
-    await setTimeoutPromise(100);
-    return a + b;
-}
-
-async function main() {
-    let sum = await nestedTimeouts(1, 2);
-    sum = await nestedTimeouts(sum, 3);
-    sum = await nestedTimeouts(sum, 4);
-    console.log("Nested sum:", sum);
-}
-
-main();
-// Deprecated crypto usage
-app.get("/hash", (req, res) => {
-    const hash = crypto.createHash("md5").update("password").digest("hex"); // insecure
-    res.send(hash);
-});
-
-// Server listen
-app.listen(3000, function() {
-    console.log("Buggy server running on port 3000");
-});
-
-// Random unhandled promise rejection
-Promise.reject("Oops, unhandled!");
-
-// Unused imported module
-path.join("a", "b");
-
-// Another memory leak + huge object
-const memoryHog = {};
-setInterval(() => {
-    memoryHog[Math.random()] = new Array(1000000).fill("leak");
-}, 1000);
-
-// Endless recursion
-function recurse(n) {
-    return recurse(n + 1); // stack overflow
-}
-// recurse(0); // Uncomment to crash
-
-console.log("All intentionally buggy code loaded.");
+app.listen(3000, ()=>{
+  console.log("Server started on "+PORT)
+})
