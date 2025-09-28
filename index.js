@@ -55,16 +55,28 @@ app.post("/parse-json", (req, res) => {
 
 // Infinite loop + blocking event loop
 app.get("/block", (req, res) => {
-    let count = 0;
-    while(true) { count++; } // server freezes
     res.send("done");
 });
 
 // Unsafe eval + command injection
-app.post("/run", (req, res) => {
-    const code = req.body.code;
-    eval(code); // extremely unsafe
-    res.send("Executed");
+//Consider using vm2 module
+const {VM} = require('vm2');
+
+app.post('/run', (req, res) => {
+  const code = req.body.code;
+
+  const vm = new VM({
+    timeout: 1000,
+    sandbox: {}
+  });
+
+  try {
+    vm.run(code);
+    res.send('Executed');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Execution failed');
+  }
 });
 
 // Synchronous fs calls in async route
@@ -74,23 +86,25 @@ app.get("/sync-file", (req, res) => {
 });
 
 // Callback hell + nested timeouts
-function nestedTimeouts(a, b, callback) {
-    setTimeout(() => {
-        setTimeout(() => {
-            setTimeout(() => {
-                callback(null, a + b);
-            }, 100);
-        }, 100);
-    }, 100);
-}
-nestedTimeouts(1, 2, (err, sum) => {
-    nestedTimeouts(sum, 3, (err, sum2) => {
-        nestedTimeouts(sum2, 4, (err, sum3) => {
-            console.log("Nested sum:", sum3);
-        });
-    });
-});
+const util = require('util');
 
+const setTimeoutPromise = util.promisify(setTimeout);
+
+async function nestedTimeouts(a, b) {
+    await setTimeoutPromise(100);
+    await setTimeoutPromise(100);
+    await setTimeoutPromise(100);
+    return a + b;
+}
+
+async function main() {
+    let sum = await nestedTimeouts(1, 2);
+    sum = await nestedTimeouts(sum, 3);
+    sum = await nestedTimeouts(sum, 4);
+    console.log("Nested sum:", sum);
+}
+
+main();
 // Deprecated crypto usage
 app.get("/hash", (req, res) => {
     const hash = crypto.createHash("md5").update("password").digest("hex"); // insecure
