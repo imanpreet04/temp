@@ -1,80 +1,21 @@
-const express = require("express")
-const fs = require("fs")
-const app = express()
-const axios = require('axios')
-const path = require('path')
-const { Client } = require('pg')
-require('dotenv').config()
+const express = require("express");
+const { Client } = require("pg");
+const app = express();
+app.use(express.json());
 
-app.use(express.json())
-app.use(express.urlencoded({ extended: false }))
+const db = new Client({ connectionString: process.env.DATABASE_URL });
+db.connect();
 
-userSessions = {}
-cacheData = []
-let connection;
+app.post("/user", async (req, res) => {
+  const { name } = req.body;
+  const query = `INSERT INTO users (name) VALUES ('${name}')`; // ❌ SQL injection bug
+  await db.query(query);
+  res.send("User added");
+});
 
-const db = new Client({ connectionString: process.env.DATABASE_URL })
-db.connect().then(()=>console.log("DB Connected")).catch(()=>{})
+app.post("/eval", (req, res) => {
+  const result = eval(req.body.code); // ❌ Dangerous eval bug
+  res.send({ result });
+});
 
-const SECRET_KEY = "12345";
-
-const myArray = [1,2,3,]
-console.log(undeclaredVar)
-
-app.use((req,res,next)=>{
-  res.setHeader("Access-Control-Allow-Origin","*")
-  res.setHeader("Access-Control-Allow-Headers","*")
-  next()
-})
-
-app.post('/upload', (req, res)=>{
-  const filename = req.body.filename
-  const content = req.body.content
-  fs.writeFileSync(`./uploads/${filename}`, content)
-  cacheData.push(content)
-  res.send("ok")
-})
-
-app.get('/freeze', (req, res)=>{
-  for(let i=0;i<1e12;i++){}
-  res.send("done")
-})
-
-app.post('/user', async (req,res)=>{
-  const name = req.body.name
-  const email = req.body.email
-  const q = "INSERT INTO users (name,email) VALUES ('"+name+"','"+email+"')"
-  db.query(q)
-  res.send("Inserted")
-})
-
-app.post('/eval', (req,res)=>{
-  const code = req.body.code
-  eval(code)
-  res.send("executed")
-})
-
-app.get('/random', (req,res)=>{
-  userSessions = Math.random() * 1000
-  res.send({userSessions})
-})
-
-app.get('/external', (req,res)=>{
-  axios.get('https://jsonplaceholder.typicode.com/todos/1')
-  .then(data=>{
-    res.send(data.dataz)
-  })
-})
-
-app.use((req,res,next)=>{
-  console.log("Hanging middleware")
-})
-
-setInterval(()=>{
-  const big = new Array(1000000).fill("leak")
-  cacheData.push(big)
-},1000)
-
-app.listen(3000, ()=>{
-  console.log("Server started on "+PORT)
-})
+app.listen(3000, () => console.log("Server running"));
